@@ -143,9 +143,9 @@ def launch(port):
                 )
             
             with gr.Column(scale=1):
-                # with gr.Row(variant='panel'):
-                seg_image = gr.Image(value=None, type="filepath", image_mode="RGBA", label="Segmented Image", interactive=False)
-                output_video = gr.Video(value=None, label="Rendered Video", autoplay=True)
+                with gr.Row(variant='panel'):
+                    seg_image = gr.Image(value=None, width="auto", type="filepath", image_mode="RGBA", label="Segmented Image", interactive=False)
+                    output_video = gr.Video(value=None, width="auto", label="Rendered Video", autoplay=True)
                 output_3dgs = Model3DGS(value=None, label="3D Model")
         
         img_run_btn.click(

@@ -12,7 +12,6 @@ from tqdm import tqdm
 
 
 def sam_init(sam_checkpoint, device_id=0):
-    # sam_checkpoint = os.path.join(os.path.dirname(__file__), "./sam_vit_h_4b8939.pth")
     model_type = "vit_h"
 
     device = "cuda:{}".format(device_id) if torch.cuda.is_available() else "cpu"
@@ -26,7 +25,6 @@ def sam_out_nosave(predictor, input_image, *bbox_sliders):
     bbox = np.array(bbox_sliders)
     image = np.asarray(input_image)
 
-    start_time = time.time()
     predictor.set_image(image)
 
     masks_bbox, scores_bbox, logits_bbox = predictor.predict(
@@ -73,11 +71,6 @@ def image_preprocess(input_image, save_path, lower_contrast=True, rescale=True):
     rgba = Image.fromarray(padded_image).resize((256, 256), Image.LANCZOS)
     rgba.save(save_path)
 
-    # rgba_arr = np.array(rgba) / 255.0
-    # rgb = rgba_arr[...,:3] * rgba_arr[...,-1:] + (1 - rgba_arr[...,-1:])
-    # return Image.fromarray((rgb * 255).astype(np.uint8))
-
-
 def pred_bbox(image):
     image_nobg = remove(image.convert("RGBA"), alpha_matting=True)
     alpha = np.asarray(image_nobg)[:, :, -1]
@@ -117,19 +110,3 @@ def todevice(vars, device="cuda"):
         return vars
     else:
         raise NotImplementedError("invalid input type {} for tensor2numpy".format(type(vars)))
-
-def download_checkpoint(url, save_path):
-    try:
-        with urllib.request.urlopen(url) as response, open(save_path, 'wb') as file:
-            file_size = int(response.info().get('Content-Length', -1))
-            chunk_size = 8192
-            num_chunks = file_size // chunk_size if file_size > chunk_size else 1
-
-            with tqdm(total=file_size, unit='B', unit_scale=True, desc='Downloading', ncols=100) as pbar:
-                for chunk in iter(lambda: response.read(chunk_size), b''):
-                    file.write(chunk)
-                    pbar.update(len(chunk))
-        
-        print(f"Checkpoint downloaded and saved to: {save_path}")
-    except Exception as e:
-        print(f"Error downloading checkpoint: {e}")

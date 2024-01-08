@@ -114,8 +114,7 @@ def run_video(image_path: str,
 
 def launch(port):
     with gr.Blocks(
-        title="TGS - Demo",
-        theme=gr.themes.Monochrome()
+        title="TGS - Demo"
     ) as demo:
         with gr.Row(variant='panel'):
             gr.Markdown(HEADER)
@@ -134,7 +133,13 @@ def launch(port):
                         "example_images/a_pikachu_with_smily_face.webp",
                         "example_images/an_otter_wearing_sunglasses.webp",
                         "example_images/lumberjack_axe.webp",
-                        "example_images/medieval_shield.webp"
+                        "example_images/medieval_shield.webp",
+                        "example_images/a_cat_dressed_as_the_pope.webp",
+                        "example_images/a_cute_little_frog_comicbook_style.webp",
+                        "example_images/a_purple_winter_jacket.webp",
+                        "example_images/MP5,_high_quality,_ultra_realistic.webp",
+                        "example_images/retro_pc_photorealistic_high_detailed.webp",
+                        "example_images/stratocaster_guitar_pixar_style.webp"
                     ],
                     inputs=[input_image],
                     cache_examples=False,
@@ -145,7 +150,7 @@ def launch(port):
             with gr.Column(scale=1):
                 with gr.Row(variant='panel'):
                     seg_image = gr.Image(value=None, type="filepath", height=256, width=256, image_mode="RGBA", label="Segmented Image", interactive=False)
-                    output_video = gr.Video(value=None, label="Video", height=256, autoplay=True)
+                    output_video = gr.Video(value=None, label="Rendered Video", height=256, autoplay=True)
                 output_3dgs = Model3DGS(value=None, label="3DGS")
         
         img_run_btn.click(

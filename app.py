@@ -80,11 +80,9 @@ def init_trial_dir():
 @torch.no_grad()
 def infer(image_path: str,
           cam_dist: float,
-          fovy_deg: float,
           only_3dgs: bool = False):
     data_cfg = deepcopy(base_cfg.data)
     data_cfg.only_3dgs = only_3dgs
-    data_cfg.cond_fovy_deg = fovy_deg
     data_cfg.cond_camera_distance = cam_dist
     data_cfg.image_list = [image_path]
     dm = tgs.find(base_cfg.data_cls)(data_cfg)
@@ -97,17 +95,15 @@ def infer(image_path: str,
         system.on_test_epoch_end()
 
 def run(image_path: str,
-        cam_dist: float,
-        fov_degree: float):
-    infer(image_path, cam_dist, fov_degree, only_3dgs=True)
+        cam_dist: float):
+    infer(image_path, cam_dist, only_3dgs=True)
     save_path = system.get_save_dir()
     gs = glob.glob(os.path.join(save_path, "*.ply"))[0]
     return gs
 
 def run_video(image_path: str,
-            cam_dist: float,
-            fov_degree: float):
-    infer(image_path, cam_dist, fov_degree)
+            cam_dist: float):
+    infer(image_path, cam_dist)
     save_path = system.get_save_dir()
     video = glob.glob(os.path.join(save_path, "*.mp4"))[0]
     return video
@@ -122,7 +118,6 @@ def launch(port):
         with gr.Row(variant='panel'):
             with gr.Column(scale=1):
                 input_image = gr.Image(value=None, width=512, height=512, type="filepath", label="Input Image")
-                fov_deg_slider = gr.Slider(20, 80, value=40, step=1, label="Camera Fov Degree")
                 camera_dist_slider = gr.Slider(1.0, 4.0, value=1.6, step=0.1, label="Camera Distance")
                 img_run_btn = gr.Button("Reconstruction")
 
@@ -148,8 +143,9 @@ def launch(port):
                 )
             
             with gr.Column(scale=1):
-                seg_image = gr.Image(value=None, type="filepath", height=256, width=256, image_mode="RGBA", label="Segmented Image", interactive=False)
-                output_video = gr.Video(value=None, label="Rendered Video", height=256, autoplay=True)
+                with gr.Row(variant='panel'):
+                    seg_image = gr.Image(value=None, type="filepath", height=256, width=256, image_mode="RGBA", label="Segmented Image", interactive=False)
+                    output_video = gr.Video(value=None, label="Rendered Video", height=256, width=256, autoplay=True)
                 output_3dgs = Model3DGS(value=None, label="3D Model")
         
         img_run_btn.click(
@@ -161,11 +157,11 @@ def launch(port):
             fn=init_trial_dir,
             concurrency_limit=1,
         ).success(fn=run,
-                inputs=[seg_image, camera_dist_slider, fov_deg_slider],
+                inputs=[seg_image, camera_dist_slider],
                 outputs=[output_3dgs],
                 concurrency_limit=1
         ).success(fn=run_video,
-                inputs=[seg_image, camera_dist_slider, fov_deg_slider],
+                inputs=[seg_image, camera_dist_slider],
                 outputs=[output_video],
                 concurrency_limit=1)
 

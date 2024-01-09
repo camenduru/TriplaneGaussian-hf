@@ -186,7 +186,7 @@ def launch(port):
                 concurrency_limit=1)
 
         launch_args = {"server_port": port}
-        demo.queue(max_size=10)
+        demo.queue(max_size=20)
         demo.launch(auth=AUTH, **launch_args)
 
 if __name__ == "__main__":

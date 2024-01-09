@@ -16,6 +16,10 @@ code_dir = snapshot_download("zouzx/TriplaneGaussian", local_dir="./code", token
 
 sys.path.append(code_dir)
 
+# if not LOCAL_CODE:
+import subprocess
+subprocess.run(["pip", "install", "--upgrade", "gradio"])
+
 print("gr version: ", gr.__version__)
 
 from utils import image_preprocess, pred_bbox, sam_init, sam_out_nosave, todevice

@@ -27,6 +27,8 @@ MODEL_CKPT_PATH = "code/checkpoints/tgs_lvis_100v_rel.ckpt"
 CONFIG = "code/configs/single-rel.yaml"
 EXP_ROOT_DIR = "./outputs-gradio"
 
+os.makedirs(EXP_ROOT_DIR, exist_ok=True)
+
 gpu = os.environ.get("CUDA_VISIBLE_DEVICES", "0")
 device = "cuda:{}".format(gpu) if torch.cuda.is_available() else "cpu"
 
@@ -52,7 +54,11 @@ HEADER = """
 
 TGS enables fast reconstruction from single-view image in a few seconds based on a hybrid Triplane-Gaussian 3D representation.
 
-This model is trained on Objaverse-LVIS (~40K synthetic objects) only. And note that we normalize the input camera pose to a pre-set viewpoint during training stage following LRM, rather than directly using camera pose of input camera as implemented in our original paper.
+This model is trained on Objaverse-LVIS (**~40K** synthetic objects) only. And note that we normalize the input camera pose to a pre-set viewpoint during training stage following LRM, rather than directly using camera pose of input camera as implemented in our original paper.
+
+**Tips:**
+1. If you find the result is unsatisfied, please try to change the camera distance. It perhaps improves the results.
+2. Please wait until the completion of the reconstruction of the previous model before proceeding with the next one, otherwise, it may cause bug. We will fix it soon.
 """
 
 def preprocess(image_path, save_path=None, lower_contrast=False):
@@ -71,41 +77,43 @@ def preprocess(image_path, save_path=None, lower_contrast=False):
     return save_path
 
 def init_trial_dir():
-    if not os.path.exists(EXP_ROOT_DIR):
-        os.makedirs(EXP_ROOT_DIR, exist_ok=True)
     trial_dir = tempfile.TemporaryDirectory(dir=EXP_ROOT_DIR).name
-    system.set_save_dir(trial_dir)
+    os.makedirs(trial_dir, exist_ok=True)
     return trial_dir
 
 @torch.no_grad()
 def infer(image_path: str,
           cam_dist: float,
+          save_path: str,
           only_3dgs: bool = False):
     data_cfg = deepcopy(base_cfg.data)
     data_cfg.only_3dgs = only_3dgs
     data_cfg.cond_camera_distance = cam_dist
+    data_cfg.eval_camera_distance = cam_dist
     data_cfg.image_list = [image_path]
     dm = tgs.find(base_cfg.data_cls)(data_cfg)
 
     dm.setup()
     for batch_idx, batch in enumerate(dm.test_dataloader()):
         batch = todevice(batch, device)
-        system.test_step(batch, batch_idx, save_3dgs=only_3dgs)
+        system.test_step(save_path, batch, batch_idx, save_3dgs=only_3dgs)
     if not only_3dgs:
-        system.on_test_epoch_end()
+        system.on_test_epoch_end(save_path)
 
 def run(image_path: str,
-        cam_dist: float):
-    infer(image_path, cam_dist, only_3dgs=True)
-    save_path = system.get_save_dir()
+        cam_dist: float,
+        save_path: str):
+    infer(image_path, cam_dist, save_path, only_3dgs=True)
     gs = glob.glob(os.path.join(save_path, "*.ply"))[0]
+    # print("save gs", gs)
     return gs
 
 def run_video(image_path: str,
-            cam_dist: float):
-    infer(image_path, cam_dist)
-    save_path = system.get_save_dir()
+            cam_dist: float,
+            save_path: str):
+    infer(image_path, cam_dist, save_path)
     video = glob.glob(os.path.join(save_path, "*.mp4"))[0]
+    # print("save video", video)
     return video
 
 def launch(port):
@@ -118,8 +126,8 @@ def launch(port):
         with gr.Row(variant='panel'):
             with gr.Column(scale=1):
                 input_image = gr.Image(value=None, width=512, height=512, type="filepath", label="Input Image")
-                camera_dist_slider = gr.Slider(1.0, 4.0, value=1.6, step=0.1, label="Camera Distance")
-                img_run_btn = gr.Button("Reconstruction")
+                camera_dist_slider = gr.Slider(1.0, 4.0, value=1.9, step=0.1, label="Camera Distance")
+                img_run_btn = gr.Button("Reconstruction", variant="primary")
 
                 gr.Examples(
                     examples=[
@@ -148,6 +156,7 @@ def launch(port):
                     output_video = gr.Video(value=None, width="auto", label="Rendered Video", autoplay=True)
                 output_3dgs = Model3DGS(value=None, label="3D Model")
         
+        trial_dir = gr.State()
         img_run_btn.click(
             fn=preprocess,
             inputs=[input_image],
@@ -155,13 +164,14 @@ def launch(port):
             concurrency_limit=1,
         ).success(
             fn=init_trial_dir,
+            outputs=[trial_dir],
             concurrency_limit=1,
         ).success(fn=run,
-                inputs=[seg_image, camera_dist_slider],
+                inputs=[seg_image, camera_dist_slider, trial_dir],
                 outputs=[output_3dgs],
                 concurrency_limit=1
         ).success(fn=run_video,
-                inputs=[seg_image, camera_dist_slider],
+                inputs=[seg_image, camera_dist_slider, trial_dir],
                 outputs=[output_video],
                 concurrency_limit=1)
 

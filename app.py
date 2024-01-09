@@ -61,10 +61,14 @@ This model is trained on Objaverse-LVIS (**~45K** synthetic objects) only. And n
 2. Please wait until the completion of the reconstruction of the previous model before proceeding with the next one, otherwise, it may cause bug. We will fix it soon.
 """
 
-def preprocess(input_raw, preprocess, save_path, lower_contrast=False):
-    if not preprocess:
-        print("No preprocess")
-        # return image_path
+def assert_input_image(input_image):
+    if input_image is None:
+        raise gr.Error("No image selected or uploaded!")
+
+def preprocess(input_raw, save_path):
+    # if not preprocess:
+    #     print("No preprocess")
+    #     # return image_path
 
     # input_raw = Image.open(image_path)
     input_raw.thumbnail([512, 512], Image.Resampling.LANCZOS)
@@ -76,7 +80,7 @@ def preprocess(input_raw, preprocess, save_path, lower_contrast=False):
     # if save_path is None:
     #     save_path, ext = os.path.splitext(image_path)
     #     save_path = save_path + "_rgba.png"
-    image_preprocess(image_sam, save_path, lower_contrast=lower_contrast, rescale=True)
+    image_preprocess(image_sam, save_path, lower_contrast=False, rescale=True)
 
     # print("image save path = ", save_path)
     return save_path
@@ -138,7 +142,7 @@ def launch(port):
                     """
                 )
                 camera_dist_slider = gr.Slider(1.0, 4.0, value=1.9, step=0.1, label="Camera Distance")
-                preprocess_ckb = gr.Checkbox(value=True, label="Remove background")
+                # preprocess_ckb = gr.Checkbox(value=True, label="Remove background")
                 img_run_btn = gr.Button("Reconstruction", variant="primary")
 
                 gr.Examples(
@@ -170,22 +174,22 @@ def launch(port):
         
         trial_dir = gr.State()
         img_run_btn.click(
+            fn=assert_input_image,
+            inputs=[input_image],
+            queue=False
+        ).success(
             fn=init_trial_dir,
             outputs=[trial_dir],
-            concurrency_limit=1,
         ).success(
             fn=preprocess,
-            inputs=[input_image, preprocess_ckb, trial_dir],
+            inputs=[input_image, trial_dir],
             outputs=[seg_image],
-            concurrency_limit=1,
         ).success(fn=run,
                 inputs=[seg_image, camera_dist_slider, trial_dir],
                 outputs=[output_3dgs],
-                concurrency_limit=1
         ).success(fn=run_video,
                 inputs=[seg_image, camera_dist_slider, trial_dir],
-                outputs=[output_video],
-                concurrency_limit=1)
+                outputs=[output_video])
 
         launch_args = {"server_port": port}
         demo.queue(max_size=20)

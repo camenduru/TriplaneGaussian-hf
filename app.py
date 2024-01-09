@@ -54,7 +54,7 @@ HEADER = """
 
 TGS enables fast reconstruction from single-view image in a few seconds based on a hybrid Triplane-Gaussian 3D representation.
 
-This model is trained on Objaverse-LVIS (**~40K** synthetic objects) only. And note that we normalize the input camera pose to a pre-set viewpoint during training stage following LRM, rather than directly using camera pose of input camera as implemented in our original paper.
+This model is trained on Objaverse-LVIS (**~45K** synthetic objects) only. And note that we normalize the input camera pose to a pre-set viewpoint during training stage following LRM, rather than directly using camera pose of input camera as implemented in our original paper.
 
 **Tips:**
 1. If you find the result is unsatisfied, please try to change the camera distance. It perhaps improves the results.

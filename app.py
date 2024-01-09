@@ -172,7 +172,7 @@ def launch(port):
         img_run_btn.click(
             fn=init_trial_dir,
             outputs=[trial_dir],
-            concurrency_limit=1,
+            queue=False
         ).success(
             fn=preprocess,
             inputs=[input_image, preprocess_ckb, trial_dir],

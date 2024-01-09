@@ -61,7 +61,10 @@ This model is trained on Objaverse-LVIS (**~45K** synthetic objects) only. And n
 2. Please wait until the completion of the reconstruction of the previous model before proceeding with the next one, otherwise, it may cause bug. We will fix it soon.
 """
 
-def preprocess(image_path, save_path=None, lower_contrast=False):
+def preprocess(image_path, preprocess, save_path=None, lower_contrast=False):
+    if not preprocess:
+        return image_path
+
     input_raw = Image.open(image_path)
 
     input_raw.thumbnail([512, 512], Image.Resampling.LANCZOS)
@@ -125,8 +128,15 @@ def launch(port):
     
         with gr.Row(variant='panel'):
             with gr.Column(scale=1):
-                input_image = gr.Image(value=None, width=512, height=512, type="filepath", label="Input Image")
+                input_image = gr.Image(value=None, image_mode="RGBA", width=512, height=512, type="filepath", label="Input Image")
+                gr.Markdown(
+                    """
+                    **Camera distance** denotes the distance between camera center and scene center.
+                    If you find the 3D model appears flattened, you can increase it. Conversely, if the 3D model appears thick, you can decrease it.
+                    """
+                )
                 camera_dist_slider = gr.Slider(1.0, 4.0, value=1.9, step=0.1, label="Camera Distance")
+                preprocess_ckb = gr.Checkbox(value=True, label="Remove background")
                 img_run_btn = gr.Button("Reconstruction", variant="primary")
 
                 gr.Examples(
@@ -159,7 +169,7 @@ def launch(port):
         trial_dir = gr.State()
         img_run_btn.click(
             fn=preprocess,
-            inputs=[input_image],
+            inputs=[input_image, preprocess_ckb],
             outputs=[seg_image],
             concurrency_limit=1,
         ).success(

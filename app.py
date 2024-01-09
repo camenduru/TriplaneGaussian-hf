@@ -1,4 +1,3 @@
-import gradio as gr
 import argparse
 import os
 import glob
@@ -20,6 +19,7 @@ sys.path.append(code_dir)
 import subprocess
 subprocess.run(["pip", "install", "--upgrade", "gradio"])
 
+import gradio as gr
 print("gr version: ", gr.__version__)
 
 from utils import image_preprocess, pred_bbox, sam_init, sam_out_nosave, todevice

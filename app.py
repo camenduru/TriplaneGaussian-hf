@@ -186,6 +186,7 @@ def launch(port):
         ).success(
             fn=init_trial_dir,
             outputs=[trial_dir],
+            queue=False
         ).success(
             fn=preprocess,
             inputs=[input_image, trial_dir],

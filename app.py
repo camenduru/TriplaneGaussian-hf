@@ -16,6 +16,8 @@ code_dir = snapshot_download("zouzx/TriplaneGaussian", local_dir="./code", token
 
 sys.path.append(code_dir)
 
+print("gr version: ", gr.__version__)
+
 from utils import image_preprocess, pred_bbox, sam_init, sam_out_nosave, todevice
 from gradio_splatting.backend.gradio_model3dgs import Model3DGS
 import tgs
@@ -192,7 +194,7 @@ def launch(port):
                 outputs=[output_video])
 
         launch_args = {"server_port": port}
-        demo.queue(max_size=20)
+        demo.queue(max_size=1)
         demo.launch(auth=AUTH, **launch_args)
 
 if __name__ == "__main__":

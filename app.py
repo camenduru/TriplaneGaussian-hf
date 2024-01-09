@@ -63,7 +63,8 @@ This model is trained on Objaverse-LVIS (**~45K** synthetic objects) only. And n
 
 def preprocess(image_path, preprocess, save_path=None, lower_contrast=False):
     if not preprocess:
-        return image_path
+        print("No preprocess")
+        # return image_path
 
     input_raw = Image.open(image_path)
 
@@ -128,7 +129,7 @@ def launch(port):
     
         with gr.Row(variant='panel'):
             with gr.Column(scale=1):
-                input_image = gr.Image(value=None, image_mode="RGBA", width=512, height=512, type="filepath", label="Input Image")
+                input_image = gr.Image(value=None, image_mode="RGB", width=512, height=512, type="filepath", label="Input Image")
                 gr.Markdown(
                     """
                     **Camera distance** denotes the distance between camera center and scene center.

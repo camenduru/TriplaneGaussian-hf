@@ -61,23 +61,24 @@ This model is trained on Objaverse-LVIS (**~45K** synthetic objects) only. And n
 2. Please wait until the completion of the reconstruction of the previous model before proceeding with the next one, otherwise, it may cause bug. We will fix it soon.
 """
 
-def preprocess(image_path, preprocess, save_path=None, lower_contrast=False):
+def preprocess(input_raw, preprocess, save_path, lower_contrast=False):
     if not preprocess:
         print("No preprocess")
         # return image_path
 
-    input_raw = Image.open(image_path)
-
+    # input_raw = Image.open(image_path)
     input_raw.thumbnail([512, 512], Image.Resampling.LANCZOS)
     image_sam = sam_out_nosave(
         sam_predictor, input_raw.convert("RGB"), pred_bbox(input_raw)
     )
 
-    if save_path is None:
-        save_path, ext = os.path.splitext(image_path)
-        save_path = save_path + "_rgba.png"
+    save_path = os.path.join(save_path, "input_rgba.png")
+    # if save_path is None:
+    #     save_path, ext = os.path.splitext(image_path)
+    #     save_path = save_path + "_rgba.png"
     image_preprocess(image_sam, save_path, lower_contrast=lower_contrast, rescale=True)
 
+    # print("image save path = ", save_path)
     return save_path
 
 def init_trial_dir():
@@ -129,7 +130,7 @@ def launch(port):
     
         with gr.Row(variant='panel'):
             with gr.Column(scale=1):
-                input_image = gr.Image(value=None, image_mode="RGB", width=512, height=512, type="filepath", label="Input Image")
+                input_image = gr.Image(value=None, image_mode="RGB", width=512, height=512, type="pil", label="Input Image")
                 gr.Markdown(
                     """
                     **Camera distance** denotes the distance between camera center and scene center.
@@ -169,13 +170,13 @@ def launch(port):
         
         trial_dir = gr.State()
         img_run_btn.click(
-            fn=preprocess,
-            inputs=[input_image, preprocess_ckb],
-            outputs=[seg_image],
-            concurrency_limit=1,
-        ).success(
             fn=init_trial_dir,
             outputs=[trial_dir],
+            concurrency_limit=1,
+        ).success(
+            fn=preprocess,
+            inputs=[input_image, preprocess_ckb, trial_dir],
+            outputs=[seg_image],
             concurrency_limit=1,
         ).success(fn=run,
                 inputs=[seg_image, camera_dist_slider, trial_dir],

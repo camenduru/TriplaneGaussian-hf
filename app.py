@@ -208,7 +208,7 @@ def launch(port):
                 outputs=[output_video])
 
         launch_args = {"server_port": port}
-        demo.queue(max_size=20)
+        demo.queue(max_size=4)
         demo.launch(auth=AUTH, **launch_args)
 
 if __name__ == "__main__":

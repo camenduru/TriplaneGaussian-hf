@@ -151,6 +151,8 @@ def launch(port):
     if SAM_LOCAL:
         sam_predictor = sam_init(SAM_CKPT_PATH, gpu)
         print("load sam ckpt done.")
+    else:
+        sam_predictor = None
 
     with gr.Blocks(
         title="TGS - Demo"

@@ -71,13 +71,21 @@ def assert_input_image(input_image):
     if input_image is None:
         raise gr.Error("No image selected or uploaded!")
 
+def resize_image(input_raw, size):
+    w, h = input_raw.size
+    ratio = size / max(w, h)
+    resized_w = int(w * ratio)
+    resized_h = int(h * ratio)
+    return input_raw.resize((resized_w, resized_h), Image.Resampling.LANCZOS)
+
 def preprocess(input_raw, save_path):
     # if not preprocess:
     #     print("No preprocess")
     #     # return image_path
 
     # input_raw = Image.open(image_path)
-    input_raw.thumbnail([512, 512], Image.Resampling.LANCZOS)
+    # input_raw.thumbnail([512, 512], Image.Resampling.LANCZOS)
+    input_raw = resize_image(input_raw, 512)
     print("image size:", input_raw.size)
     image_sam = sam_out_nosave(
         sam_predictor, input_raw.convert("RGB"), pred_bbox(input_raw)

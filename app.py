@@ -99,7 +99,7 @@ def preprocess(image_path, save_path):
 
     subprocess.run([f"python run_sam.py --image_path {image_path} --save_path {save_path}"], shell=True)
 
-    # print("image save path = ", save_path)
+    print("image save path = ", save_path)
     return save_path
 
 def init_trial_dir():
@@ -193,11 +193,11 @@ def launch(port):
         img_run_btn.click(
             fn=assert_input_image,
             inputs=[input_image],
-            queue=False
+            # queue=False
         ).success(
             fn=init_trial_dir,
             outputs=[trial_dir],
-            queue=False
+            # queue=False
         ).success(
             fn=preprocess,
             inputs=[input_image, trial_dir],
@@ -210,7 +210,7 @@ def launch(port):
                 outputs=[output_video])
 
         launch_args = {"server_port": port}
-        demo.queue(max_size=20)
+        demo.queue(max_size=4)
         demo.launch(auth=AUTH, **launch_args)
 
 if __name__ == "__main__":

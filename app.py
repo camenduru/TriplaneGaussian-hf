@@ -6,6 +6,7 @@ from PIL import Image
 from copy import deepcopy
 import sys
 import tempfile
+import subprocess
 from huggingface_hub import snapshot_download
 
 LOCAL_CODE = os.environ.get("LOCAL_CODE", "1") == "1"
@@ -16,7 +17,6 @@ code_dir = snapshot_download("zouzx/TriplaneGaussian", local_dir="./code", token
 sys.path.append(code_dir)
 
 if not LOCAL_CODE:
-    import subprocess
     subprocess.run(["pip", "install", "--upgrade", "gradio"])
 
 import gradio as gr
@@ -41,8 +41,8 @@ device = "cuda:{}".format(gpu) if torch.cuda.is_available() else "cpu"
 print("device: ", device)
 
 # load SAM checkpoint
-sam_predictor = sam_init(SAM_CKPT_PATH, gpu)
-print("load sam ckpt done.")
+# sam_predictor = sam_init(SAM_CKPT_PATH, gpu)
+# print("load sam ckpt done.")
 
 # init system
 base_cfg: ExperimentConfig
@@ -78,24 +78,26 @@ def resize_image(input_raw, size):
     resized_h = int(h * ratio)
     return input_raw.resize((resized_w, resized_h), Image.Resampling.LANCZOS)
 
-def preprocess(input_raw, save_path):
+def preprocess(image_path, save_path):
     # if not preprocess:
     #     print("No preprocess")
     #     # return image_path
 
     # input_raw = Image.open(image_path)
     # input_raw.thumbnail([512, 512], Image.Resampling.LANCZOS)
-    input_raw = resize_image(input_raw, 512)
-    print("image size:", input_raw.size)
-    image_sam = sam_out_nosave(
-        sam_predictor, input_raw.convert("RGB"), pred_bbox(input_raw)
-    )
+    # input_raw = resize_image(input_raw, 512)
+    # print("image size:", input_raw.size)
+    # image_sam = sam_out_nosave(
+    #     sam_predictor, input_raw.convert("RGB"), pred_bbox(input_raw)
+    # )
 
     save_path = os.path.join(save_path, "input_rgba.png")
     # if save_path is None:
     #     save_path, ext = os.path.splitext(image_path)
     #     save_path = save_path + "_rgba.png"
-    image_preprocess(image_sam, save_path, lower_contrast=False, rescale=True)
+    # image_preprocess(image_sam, save_path, lower_contrast=False, rescale=True)
+
+    subprocess.run([f"python run_sam.py --image_path {image_path} --save_path {save_path}"], shell=True)
 
     # print("image save path = ", save_path)
     return save_path
@@ -149,7 +151,7 @@ def launch(port):
     
         with gr.Row(variant='panel'):
             with gr.Column(scale=1):
-                input_image = gr.Image(value=None, image_mode="RGB", width=512, height=512, type="pil", sources="upload", label="Input Image")
+                input_image = gr.Image(value=None, width=512, height=512, type="filepath", sources="upload", label="Input Image")
                 gr.Markdown(
                     """
                     **Camera distance** denotes the distance between camera center and scene center.

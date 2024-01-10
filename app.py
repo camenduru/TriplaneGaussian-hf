@@ -97,7 +97,7 @@ def preprocess(input_raw, save_path):
     #     save_path = save_path + "_rgba.png"
     image_preprocess(image_sam, save_path, lower_contrast=False, rescale=True)
 
-    # print("image save path = ", save_path)
+    print("image save path = ", save_path)
     return save_path
 
 def init_trial_dir():

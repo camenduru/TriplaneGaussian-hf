@@ -8,16 +8,20 @@ import sys
 import tempfile
 import subprocess
 from huggingface_hub import snapshot_download
+from functools import partial
 
 LOCAL_CODE = os.environ.get("LOCAL_CODE", "1") == "1"
+CACHE_EXAMPLES = os.environ.get("CACHE_EXAMPLES", "1") == "1"
+SAM_LOCAL = os.environ.get("SAM_LOCAL", "1") == "1"
 AUTH = ("admin", os.environ["PASSWD"]) if "PASSWD" in os.environ else None
+DEFAULT_CAM_DIST = 1.9
 
 code_dir = snapshot_download("zouzx/TriplaneGaussian", local_dir="./code", token=os.environ["HF_TOKEN"]) if not LOCAL_CODE else "./code"
 
 sys.path.append(code_dir)
 
 if not LOCAL_CODE:
-    subprocess.run(["pip", "install", "--upgrade", "gradio"])
+    subprocess.run(["pip", "install", "--upgrade", "gradio==4.12.0"])
 
 import gradio as gr
 print("gr version: ", gr.__version__)
@@ -39,10 +43,6 @@ gpu = os.environ.get("CUDA_VISIBLE_DEVICES", "0")
 device = "cuda:{}".format(gpu) if torch.cuda.is_available() else "cpu"
 
 print("device: ", device)
-
-# load SAM checkpoint
-# sam_predictor = sam_init(SAM_CKPT_PATH, gpu)
-# print("load sam ckpt done.")
 
 # init system
 base_cfg: ExperimentConfig
@@ -78,28 +78,26 @@ def resize_image(input_raw, size):
     resized_h = int(h * ratio)
     return input_raw.resize((resized_w, resized_h), Image.Resampling.LANCZOS)
 
-def preprocess(image_path, save_path):
+def preprocess(input_raw, save_path, sam_predictor=None):
     # if not preprocess:
     #     print("No preprocess")
     #     # return image_path
+    image_path = os.path.join(save_path, "input_raw.png")
+    save_path = os.path.join(save_path, "seg_rgba.png")
+    if SAM_LOCAL and sam_predictor is not None:
+        # input_raw = Image.open(image_path)
+        # input_raw.thumbnail([512, 512], Image.Resampling.LANCZOS)
+        input_raw = resize_image(input_raw, 512)
+        print("image size:", input_raw.size)
+        image_sam = sam_out_nosave(
+            sam_predictor, input_raw.convert("RGB"), pred_bbox(input_raw)
+        )
+        image_preprocess(image_sam, save_path, lower_contrast=False, rescale=True)
+    else:
+        input_raw.save(image_path)
+        subprocess.run([f"python run_sam.py --image_path {image_path} --save_path {save_path}"], shell=True)
 
-    # input_raw = Image.open(image_path)
-    # input_raw.thumbnail([512, 512], Image.Resampling.LANCZOS)
-    # input_raw = resize_image(input_raw, 512)
-    # print("image size:", input_raw.size)
-    # image_sam = sam_out_nosave(
-    #     sam_predictor, input_raw.convert("RGB"), pred_bbox(input_raw)
-    # )
-
-    save_path = os.path.join(save_path, "input_rgba.png")
-    # if save_path is None:
-    #     save_path, ext = os.path.splitext(image_path)
-    #     save_path = save_path + "_rgba.png"
-    # image_preprocess(image_sam, save_path, lower_contrast=False, rescale=True)
-
-    subprocess.run([f"python run_sam.py --image_path {image_path} --save_path {save_path}"], shell=True)
-
-    print("image save path = ", save_path)
+    print("image raw path = ", image_path, "image save path =", save_path)
     return save_path
 
 def init_trial_dir():
@@ -142,7 +140,18 @@ def run_video(image_path: str,
     # print("save video", video)
     return video
 
+def run_example(image_path, sam_predictor=None):
+    save_path = init_trial_dir()
+    seg_image_path = preprocess(image_path, save_path, sam_predictor)
+    gs = run(seg_image_path, DEFAULT_CAM_DIST, save_path)
+    video = run_video(seg_image_path, DEFAULT_CAM_DIST, save_path)
+    return seg_image_path, gs, video
+
 def launch(port):
+    if SAM_LOCAL:
+        sam_predictor = sam_init(SAM_CKPT_PATH, gpu)
+        print("load sam ckpt done.")
+
     with gr.Blocks(
         title="TGS - Demo"
     ) as demo:
@@ -151,44 +160,47 @@ def launch(port):
     
         with gr.Row(variant='panel'):
             with gr.Column(scale=1):
-                input_image = gr.Image(value=None, width=512, height=512, type="filepath", sources="upload", label="Input Image")
+                input_image = gr.Image(value=None, image_mode="RGB", width=512, height=512, type="pil", sources="upload", label="Input Image")
                 gr.Markdown(
                     """
                     **Camera distance** denotes the distance between camera center and scene center.
                     If you find the 3D model appears flattened, you can increase it. Conversely, if the 3D model appears thick, you can decrease it.
                     """
                 )
-                camera_dist_slider = gr.Slider(1.0, 4.0, value=1.9, step=0.1, label="Camera Distance")
+                camera_dist_slider = gr.Slider(1.0, 4.0, value=DEFAULT_CAM_DIST, step=0.1, label="Camera Distance")
                 # preprocess_ckb = gr.Checkbox(value=True, label="Remove background")
                 img_run_btn = gr.Button("Reconstruction", variant="primary")
 
-                gr.Examples(
-                    examples=[
-                        "example_images/green_parrot.webp",
-                        "example_images/rusty_gameboy.webp",
-                        "example_images/a_pikachu_with_smily_face.webp",
-                        "example_images/an_otter_wearing_sunglasses.webp",
-                        "example_images/lumberjack_axe.webp",
-                        "example_images/medieval_shield.webp",
-                        "example_images/a_cat_dressed_as_the_pope.webp",
-                        "example_images/a_cute_little_frog_comicbook_style.webp",
-                        "example_images/a_purple_winter_jacket.webp",
-                        "example_images/MP5,_high_quality,_ultra_realistic.webp",
-                        "example_images/retro_pc_photorealistic_high_detailed.webp",
-                        "example_images/stratocaster_guitar_pixar_style.webp"
-                    ],
-                    inputs=[input_image],
-                    cache_examples=False,
-                    label="Examples",
-                    examples_per_page=40
-                )
-            
             with gr.Column(scale=1):
                 with gr.Row(variant='panel'):
                     seg_image = gr.Image(value=None, width="auto", type="filepath", image_mode="RGBA", label="Segmented Image", interactive=False)
                     output_video = gr.Video(value=None, width="auto", label="Rendered Video", autoplay=True)
                 output_3dgs = Model3DGS(value=None, label="3D Model")
         
+        with gr.Row(variant="panel"):
+            gr.Examples(
+                examples=[
+                    "example_images/green_parrot.webp",
+                    "example_images/rusty_gameboy.webp",
+                    "example_images/a_pikachu_with_smily_face.webp",
+                    "example_images/an_otter_wearing_sunglasses.webp",
+                    "example_images/lumberjack_axe.webp",
+                    "example_images/medieval_shield.webp",
+                    "example_images/a_cat_dressed_as_the_pope.webp",
+                    "example_images/a_cute_little_frog_comicbook_style.webp",
+                    "example_images/a_purple_winter_jacket.webp",
+                    "example_images/MP5,_high_quality,_ultra_realistic.webp",
+                    "example_images/retro_pc_photorealistic_high_detailed.webp",
+                    "example_images/stratocaster_guitar_pixar_style.webp"
+                ],
+                inputs=[input_image],
+                outputs=[seg_image, output_3dgs, output_video],
+                cache_examples=CACHE_EXAMPLES,
+                fn=partial(run_example, sam_predictor=sam_predictor),
+                label="Examples",
+                examples_per_page=40
+            )
+
         trial_dir = gr.State()
         img_run_btn.click(
             fn=assert_input_image,
@@ -199,7 +211,7 @@ def launch(port):
             outputs=[trial_dir],
             # queue=False
         ).success(
-            fn=preprocess,
+            fn=partial(preprocess, sam_predictor=sam_predictor),
             inputs=[input_image, trial_dir],
             outputs=[seg_image],
         ).success(fn=run,
@@ -210,7 +222,7 @@ def launch(port):
                 outputs=[output_video])
 
         launch_args = {"server_port": port}
-        demo.queue(max_size=4)
+        demo.queue(max_size=20)
         demo.launch(auth=AUTH, **launch_args)
 
 if __name__ == "__main__":

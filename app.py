@@ -191,11 +191,11 @@ def launch(port):
         img_run_btn.click(
             fn=assert_input_image,
             inputs=[input_image],
-            queue=False
+            # queue=False
         ).success(
             fn=init_trial_dir,
             outputs=[trial_dir],
-            queue=False
+            # queue=False
         ).success(
             fn=preprocess,
             inputs=[input_image, trial_dir],

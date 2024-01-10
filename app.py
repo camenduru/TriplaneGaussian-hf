@@ -15,9 +15,9 @@ code_dir = snapshot_download("zouzx/TriplaneGaussian", local_dir="./code", token
 
 sys.path.append(code_dir)
 
-# if not LOCAL_CODE:
-import subprocess
-subprocess.run(["pip", "install", "--upgrade", "gradio"])
+if not LOCAL_CODE:
+    import subprocess
+    subprocess.run(["pip", "install", "--upgrade", "gradio"])
 
 import gradio as gr
 print("gr version: ", gr.__version__)
@@ -78,6 +78,7 @@ def preprocess(input_raw, save_path):
 
     # input_raw = Image.open(image_path)
     input_raw.thumbnail([512, 512], Image.Resampling.LANCZOS)
+    print("image size:", input_raw.size)
     image_sam = sam_out_nosave(
         sam_predictor, input_raw.convert("RGB"), pred_bbox(input_raw)
     )
@@ -140,7 +141,7 @@ def launch(port):
     
         with gr.Row(variant='panel'):
             with gr.Column(scale=1):
-                input_image = gr.Image(value=None, image_mode="RGB", width=512, height=512, type="pil", label="Input Image")
+                input_image = gr.Image(value=None, image_mode="RGB", width=512, height=512, type="pil", sources="upload", label="Input Image")
                 gr.Markdown(
                     """
                     **Camera distance** denotes the distance between camera center and scene center.

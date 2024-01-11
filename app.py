@@ -64,7 +64,10 @@ This model is trained on Objaverse-LVIS (**~45K** synthetic objects) only. And n
 
 **Tips:**
 1. If you find the result is unsatisfied, please try to change the camera distance. It perhaps improves the results.
-2. Please wait until the completion of the reconstruction of the previous model before proceeding with the next one, otherwise, it may cause bug. We will fix it soon.
+
+**Notes:**
+1. Please wait until the completion of the reconstruction of the previous model before proceeding with the next one, otherwise, it may cause bug. We will fix it soon.
+2. We currently conduct image segmentation (SAM) by invoking subprocess, which consumes more time as it requires loading SAM checkpoint each time. We have observed that directly running SAM in app.py often leads to queue blocking, but we haven't identified the cause yet. We plan to fix this issue for faster segmentation running time later. 
 """
 
 def assert_input_image(input_image):
